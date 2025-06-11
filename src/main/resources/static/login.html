@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title data-i18n-key="loginPage.title">Login - Task Scheduler</title>
+    <link rel="stylesheet" href="libs/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="libs/bootstrap-icons/css/bootstrap-icons.css">    <link rel="stylesheet" href="css/style.css">
+    <script src="js/i18n.js"></script> <!-- Load i18n early -->
+    <script src="js/i18n-init.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-6 col-lg-4">
+                <div class="card mt-5">
+                    <div class="card-body">
+                        <h3 class="card-title text-center" data-i18n-key="loginPage.header">Login</h3>
+                        <div id="error-message" class="alert alert-danger" style="display: none;"></div>
+                        <form id="login-form">
+                            <div class="form-group">
+                                <label for="username" data-i18n-key="loginPage.usernameLabel">Username</label>
+                                <input type="text" class="form-control" id="username" name="username" data-i18n-key="loginPage.usernamePlaceholder" placeholder="Enter username" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="password" data-i18n-key="loginPage.passwordLabel">Password</label>
+                                <input type="password" class="form-control" id="password" name="password" data-i18n-key="loginPage.passwordPlaceholder" placeholder="Enter password" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-block" data-i18n-key="loginPage.loginButton">Login</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="libs/jquery/jquery-3.5.1.min.js"></script>
+    <script src="libs/popperjs/popper.min.js"></script>
+    <script src="libs/bootstrap/js/bootstrap.min.js"></script>
+    <script src="js/main.js"></script>
+    <script>
+        $(document).ready(function() {
+            // 使用全局初始化函数
+            if (typeof window.initializeI18n === 'function') {
+                window.initializeI18n().then(() => {
+                    console.log("i18n初始化完成，登录页面准备就绪");
+                }).catch(err => console.error("登录页面初始化i18n时出错:", err));
+            } else {
+                console.error("全局初始化函数未定义，尝试使用传统方式");
+                // 回退到原始方法
+                if (typeof i18n !== 'undefined') {
+                    i18n.init().then(() => {
+                        console.log("使用原始方法初始化i18n完成");
+                    });
+                } else {
+                    console.error("i18n对象未定义，登录页面无法使用国际化");
+                }
+            }
+
+            // If token exists, redirect to tasks.html (existing logic)
+            if (localStorage.getItem('jwtToken')) {
+                window.location.href = 'tasks.html';
+            }
+
+            $('#login-form').submit(function(event) {
+                event.preventDefault();
+                const username = $('#username').val();
+                const password = $('#password').val();
+
+                login(username, password,
+                    function(response) { // onSuccess
+                        localStorage.setItem('jwtToken', response.token);
+                        localStorage.setItem('username', response.username); // Store username if needed
+                        window.location.href = 'tasks.html';
+                    },
+                    function(jqXHR) { // onError
+                        let messageKey = 'loginPage.loginFailed'; // Default key
+                        let message = i18n.translate(messageKey, "Login failed. Please check your credentials."); // Translate
+
+                        // Attempt to get a more specific message from backend if available
+                        // This part remains largely the same, but the final message is translated if possible
+                        if (jqXHR.responseJSON && jqXHR.responseJSON.message) {
+                            // If backend provides a message, it might be a key or a raw message.
+                            // For now, assume raw, but ideally backend could send keys too.
+                            message = jqXHR.responseJSON.message;
+                        } else if (jqXHR.responseText) {
+                             try {
+                                const err = JSON.parse(jqXHR.responseText);
+                                if (err.message) message = err.message;
+                             } catch(e) { /* ignore parse error, use default translated message */ }
+                        }
+                        $('#error-message').text(message).show();
+                    }
+                );
+            });
+        });
+    </script>
+</body>
+</html>
